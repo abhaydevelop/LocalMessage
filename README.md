@@ -107,3 +107,8 @@ private val smsReceiver = object : BroadcastReceiver() {
 ## License
 This project is licensed under the MIT License. Feel free to use and modify as needed.
 
+![1](https://github.com/user-attachments/assets/2b45c421-a31c-43c2-a556-5d412c338cfa)
+
+
+
+
