@@ -19,6 +19,11 @@ import java.util.Date
 import java.util.Locale
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.viewModels
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: SmsAdapter
     private var filterSender: String? = null
     private lateinit var binding: ActivityMainBinding
+
+    private lateinit var smsViewModel: SmsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,21 +49,25 @@ class MainActivity : AppCompatActivity() {
         // Set white content (icons and text) in the status bar
         window.decorView.systemUiVisibility = 0 // Clear LIGHT_STATUS_BAR flag
 
-        adapter = SmsAdapter(smsList)
+        // Initialize the custom ViewModelFactory
+        val factory = SmsViewModelFactory(contentResolver)
+        smsViewModel = ViewModelProvider(this, factory).get(SmsViewModel::class.java)
+
+        adapter = SmsAdapter()
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
 
         // Set filter sender ID
         binding.filterButton.setOnClickListener {
             filterSender = binding.senderIdEditText.text.toString().takeIf { it.isNotEmpty() }
-            loadSms()
+            loadPagedData(filterSender)
         }
 
         // Register broadcast receiver for new SMS
         registerReceiver(smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION))
     }
 
-    private fun loadSms() {
+   /* private fun loadSms() {
         smsList.clear()
         val cursor = contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
@@ -83,6 +94,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         adapter.notifyDataSetChanged()
+    }*/
+
+    private fun loadPagedData(filterSender: String?) {
+        lifecycleScope.launch {
+            smsViewModel.getSmsPagedData(filterSender).collectLatest { pagingData ->
+                adapter.submitData(pagingData)
+            }
+        }
     }
 
     private val smsReceiver = object : BroadcastReceiver() {
@@ -97,7 +116,7 @@ class MainActivity : AppCompatActivity() {
                     val time = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(sms.timestampMillis))
 
                     if (filterSender == null || sender.contains(filterSender!!, ignoreCase = true)) {
-                        loadSms()
+                        loadPagedData(null)
                         smsList.add(0, SmsModel(sender, body, time))
                         adapter.notifyItemInserted(0)
                     }else{
@@ -119,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_SMS, android.Manifest.permission.RECEIVE_SMS), 101)
         } else {
-            loadSms()
+            loadPagedData(null)
         }
     }
 }

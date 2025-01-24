@@ -2,10 +2,12 @@ package com.example.mobilesmsread
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
 import com.example.mobilesmsread.databinding.ItemSmsBinding
+import androidx.paging.PagingDataAdapter
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
 
-class SmsAdapter(private val smsList: List<SmsModel>) : RecyclerView.Adapter<SmsAdapter.SmsViewHolder>() {
+class SmsAdapter : PagingDataAdapter<SmsModel, SmsAdapter.SmsViewHolder>(SMS_COMPARATOR) {
 
     class SmsViewHolder(val itemsBinding: ItemSmsBinding) : RecyclerView.ViewHolder(itemsBinding.root)
 
@@ -15,11 +17,24 @@ class SmsAdapter(private val smsList: List<SmsModel>) : RecyclerView.Adapter<Sms
     }
 
     override fun onBindViewHolder(holder: SmsViewHolder, position: Int) {
-        val sms = smsList[position]
-        holder.itemsBinding.senderTextView.text = sms.sender
-        holder.itemsBinding.messageTextView.text = sms.message
-        holder.itemsBinding.timeTextView.text = sms.time
+        val sms = getItem(position)
+        sms?.let {
+            holder.itemsBinding.senderTextView.text = it.sender
+            holder.itemsBinding.messageTextView.text = it.message
+            holder.itemsBinding.timeTextView.text = it.time
+        }
     }
 
-    override fun getItemCount(): Int = smsList.size
+    companion object {
+        private val SMS_COMPARATOR = object : DiffUtil.ItemCallback<SmsModel>() {
+            override fun areItemsTheSame(oldItem: SmsModel, newItem: SmsModel): Boolean {
+                return oldItem.sender == newItem.sender && oldItem.time == newItem.time
+            }
+
+            override fun areContentsTheSame(oldItem: SmsModel, newItem: SmsModel): Boolean {
+                return oldItem == newItem
+            }
+        }
+    }
 }
+
